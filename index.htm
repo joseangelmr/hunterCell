@@ -1,0 +1,186 @@
+<html>
+   <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+      <title>Highcharts Example</title>
+      <script type="text/javascript" src="js/jquery/jquery-1.11.2.min.js"></script>
+      <script type="text/javascript" src="js/underscore/underscore-min.js"></script>
+          <style type="text/css">
+         ${demo.css}
+      </style>
+      <script type="text/javascript">
+
+         $(function () {
+         
+         var series = [];
+
+        //mapa
+        HashMap = function(){
+           this._dict = [];
+         }
+         HashMap.prototype._get = function(key){
+           for(var i=0, couplet; couplet = this._dict[i]; i++){
+             if(couplet[0] === key){
+               return couplet;
+             }
+           }
+         }
+         HashMap.prototype.put = function(key, value){
+           var couplet = this._get(key);
+           if(couplet){
+             couplet[1] = value;
+           }else{
+             this._dict.push([key, value]);
+           }
+           return this; // for chaining
+         }
+         HashMap.prototype.get = function(key){
+           var couplet = this._get(key);
+           if(couplet){
+             return couplet[1];
+           }
+         }
+         
+         var map = new HashMap();
+
+            var fileInput = document.getElementById('fileInput');
+            fileInput.addEventListener('change', function(e) {
+                 initialize();
+         
+            });
+         
+                 // funcion principal
+                 function initialize() {
+                     // inicializar lector de archivos
+                     var fr = new FileReader();
+                     //leer archivo de texto
+                     var file = fileInput.files[0];
+                     fr.readAsText(file);
+             
+             
+                     fr.onload = function(e) {
+                         var dat = fr.result;
+                         if (dat === null || dat === undefined || dat === "") return;
+             
+                         // transformacion de archivo a JSON
+                         var JSONObject = JSON.parse(dat);
+                          
+                          var size = Object.keys(JSONObject.mapa).length;
+                          var keys = [];
+
+
+
+                        //llenado de mapa
+                         _.each(JSONObject.hotspots_in_reg, function(item, index) {
+                             map.put(item.macAddress, item);
+                             keys.push(item.macAddress);
+                        });
+
+                         //comparador
+                        
+                          _.each(keys, function(key, num) {
+
+                                 var obj = {};
+                                 obj.data = [];
+
+                                 obj.name = map.get(key).id + 1;
+
+                                 obj.color = '#5DC3BD';
+                                                                 
+                                    //por clave
+                                    var inn = 0;
+                                    var _data = [];
+                                 _.each(JSONObject.mapa, function(item, index) {
+                                        
+                                        
+                                        
+                                        var found = 0;
+                                        
+                                        // // //por valor, array
+                                        for (i = 0; i < item.length; i++) { 
+
+                                            if (key==item[i]){
+                                               found = 1;
+                                            }
+                                        }
+
+                                        if (found==1)
+                                            _data.push(1);
+                                        else
+                                            _data.push(0);
+                                 });
+
+                                        obj.data = _data;
+                                        series.push(obj);
+                          });
+
+                        var chart = new Highcharts.Chart({
+                             chart: {
+                                 renderTo: 'container',
+                                 defaultSeriesType: 'column',
+                                 zoomType: 'x'
+                             },
+                             title: {
+                                 text: 'Hunter Cell'
+                             },
+                             xAxis: {
+                                 title: {
+                                 text: 'Scans'
+                             },
+                             min: 1
+                             },
+                             yAxis: {
+                                 min: 0,
+                                 title: {
+                                     text: 'hotspots'
+                                 },
+                                 stackLabels: {
+                                     enabled: true,
+                                     style: {
+                                         fontWeight: 'bold',
+                                         color: (Highcharts.theme && Highcharts.theme.textColor) || 'gray'
+                                     }
+                                 }
+                             },
+                            scrollbar: {
+                                enabled: true
+                            },
+                             plotOptions: {
+                                 column: {
+                                     stacking: 'normal',
+                                     dataLabels: {
+                                         enabled: true,
+                                         color: (Highcharts.theme && Highcharts.theme.dataLabelsColor) || 'white',
+                                         formatter: function() {
+                                            if (this.y === 0) {
+                                                return null;
+                                            }
+                                            return this.series.name;
+                                        },
+                                         style: {
+                                             textShadow: '0 0 3px black'
+                                         }
+                                     },
+                                 }
+                             },
+                                series
+                         });
+
+                         $('#toggle').click(function() {
+                            for(i in chart.series)
+                                chart.series[i].update({ showInLegend: chart.series[i].options.showInLegend == null ? false : !chart.series[i].options.showInLegend }, false);
+                            chart.redraw();
+                            });
+                     } // on load
+                 } // initialize
+            });
+      </script>
+   </head>
+   <body>
+      <script src="js/highcharts/highcharts.js"></script>
+      <script src="js/highcharts/modules/exporting.js"></script>
+      <input type="file" id="fileInput">
+      <button id="toggle">Toggle legend</button>
+      <div id="container" style="min-width: 310px; height: 100%; margin: 0 auto"></div>
+      
+   </body>
+</html>
