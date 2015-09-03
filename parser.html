@@ -1,0 +1,160 @@
+<html>
+   <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>Parser Hunter Cell</title>
+    <script type="text/javascript" src="js/jquery/jquery-1.11.2.min.js"></script>
+    <script type="text/javascript" src="js/underscore/underscore-min.js"></script>
+    <script type="text/javascript" src="js/tools/HashMap.js"></script>
+    <script type="text/javascript" src="js/tools/Cell.js"></script>
+    <script type="text/javascript" src="js/tools/HotspotReg.js"></script>
+
+      <script src="http://maps.google.com/maps/api/js?sensor=false&libraries=geometry"></script>
+          <style type="text/css">
+         ${demo.css}
+      </style>
+
+            <script type="text/javascript">
+
+               
+                $(function () {
+
+                    window.hotspots_in_reg = window.hotspots_in_reg || {};
+                    window.hotspots_in_cell = window.hotspots_in_cell || {};
+                    window.THRESHOLD_TO_BELEIVE_AP_IS_STILL_IN_CELL = window.THRESHOLD_TO_BELEIVE_AP_IS_STILL_IN_CELL || {};
+                    window.THRESHOLD_TO_ADD_AP_TO_CELL = window.THRESHOLD_TO_ADD_AP_TO_CELL || {};
+                    var _cell = [];
+                    var cellmap = {};
+                    var main = {};
+                    var objectMain = {};
+                    var legs = {};
+
+                    var fileInput = document.getElementById('fileInput');
+                    fileInput.addEventListener('change', function(e) {
+                    initialize();
+                    });
+
+                     // funcion principal
+                     function initialize() {
+                     // inicializar lector de archivos
+                     var fr = new FileReader();
+                     //leer archivo de texto
+                     var file = fileInput.files[0];
+                     fr.readAsText(file);
+             
+             
+                        fr.onload = function(e) {
+                             var dat = fr.result;
+                             if (dat === null || dat === undefined || dat === "") return;
+
+                            // transformacion de archivo a JSON
+                            var JSONObject = JSON.parse(dat);
+                            // var size = Object.keys(JSONObject.mapa).length;
+
+                            legs = JSONObject.legs;
+
+                            var i = 0;
+                            _.each(legs, function(leg, index) {
+                                //itero por legs
+                                var leg = legs[i];
+                                var a = 0;
+                                _.each(leg, function(key, index){
+                                    //itero por objetos map y scanvalues
+                                    if (index=='map'){
+                                        var _scan = 1;
+                                        _.each(key, function(scan, index){
+                                            //itero por los scans
+
+                                            var hotspots = key[index].hotspots;
+                                            //itero en el scan result
+                                            _.each(hotspots, function(ap, i){
+                                                var hotspot = hotspots[i];
+
+                                                 //receiver
+
+                                                var keys = Object.keys(window.hotspots_in_reg);
+                                                var index = keys.indexOf(hotspot);
+
+                                                if (window.hotspots_in_reg.get(hotspot)===undefined) {
+                                                    //no esta, agrego como nuevo al registro
+                                                    window.hotspots_in_reg.put(hotspot, create_Hotspot_reg(hotspot, _scan));
+                                                }
+                                                else{
+                                                     var index = window.hotspots_in_cell.indexOf(hotspot);
+                                                     if (index > -1) {
+                                                        update_Hotspot_in_cell( window.hotspots_in_reg.get(hotspot) , _scan);
+                                                     }else{
+                                                        update_Hotspot_out_of_cell(window.hotspots_in_reg.get(hotspot), _scan);
+                                                     }
+                                                }
+                                            });
+
+
+                                            //tengo q iterar por el mapa y verificar el active
+
+                                            var num = window.hotspots_in_reg._dict.length;
+
+                                            for (var j = 0 ; j < num ; j++){
+                                                if (window.hotspots_in_reg._dict[j][1].active < _scan){
+                                                    update_partial_disappear(window.hotspots_in_reg.get(window.hotspots_in_reg._dict[j][1].macAddress) , _scan);
+                                                }
+                                            }
+                                            // console.log(window.hotspots_in_cell + " scan "+ _scan + "("+window.hotspots_in_cell.length+")");
+                                            // _cell.push(window.hotspots_in_cell);
+
+                                            var __cell = [];
+                                            for (var l = 0 ; l < window.hotspots_in_cell.length; l ++){
+                                                __cell.push(window.hotspots_in_cell[l]);
+                                            }
+
+                                            cellmap[_scan] = __cell;
+
+                                        _scan ++;
+                                    });
+
+                                        // console.log(window.hotspots_in_reg);
+
+
+                                        var num = window.hotspots_in_reg._dict.length;
+
+                                        
+                                        var aps = {};
+                                        var cell = window.hotspots_in_cell;
+                                        for (var j = 0 ; j < num ; j++){
+                                                delete window.hotspots_in_reg._dict[j][1]['active'];
+                                                 aps[window.hotspots_in_reg._dict[j][1].macAddress] = window.hotspots_in_reg._dict[j][1];
+                                                    
+                                        }
+                                        main["hotspots_in_cell"] = cell;
+                                        main["hotspots_in_reg"] = aps;
+                                        main["mapa"] = cellmap;
+                                        main["THRESHOLD_TO_ADD_AP_TO_CELL"] = window.THRESHOLD_TO_ADD_AP_TO_CELL;
+                                        main["THRESHOLD_TO_BELEIVE_AP_IS_STILL_IN_CELL"] = window.THRESHOLD_TO_BELEIVE_AP_IS_STILL_IN_CELL;
+                                        main["legs"] = legs;
+ 
+                                         console.log(JSON.stringify(main,  null, "\t"));
+
+                                    }
+                                });
+                                // console.log(a);
+                                i++;
+                            });
+
+                            var url = 'data:text/json;charset=utf8,' + encodeURIComponent(JSON.stringify(main,  null, "\t"));
+                            window.open(url, '_blank');
+                            window.focus();
+
+
+                        } // on load
+                    } // initialize
+
+                });
+
+            </script>
+   </head>
+   <body>
+      <script src="js/highcharts/highcharts.js"></script>
+      <script src="js/highcharts/modules/exporting.js"></script>
+      <p>Por favor, selecione un archivo de tipo "Zebra.json" generado por Hunter</p>
+      <input type="file" id="fileInput"  multiple="true">
+   </body>
+</html>
